@@ -5,6 +5,12 @@
 <h1 class="title">
     {{ section.title }}
 </h1>
+<head>
+    <link rel="stylesheet" href="https://unpkg.com/simpledotcss/simple.min.css">
+
+
+</head>
+
 <ul>
     {% for page in section.pages %}
     <li><a href="{{page.permalink | safe}}">{{ page.title }}</a></li>
