@@ -1,15 +1,15 @@
 import type {
-  SiteConfiguration,
   NavigationLinks,
+  SiteConfiguration,
   SocialLinks,
 } from "@/types.ts";
 
 export const SITE: SiteConfiguration = {
-  title: "Barebones",
+  title: "Rabbitholes",
   description:
-    "A barebones starter theme. Built with Astro, Tailwind CSS, and Markdown.",
-  url: "https://barebones.superwebthemes.com",
-  author: "SuperWeb Themes",
+    "Personal Blog.",
+  url: "https://rabbitholes.in/",
+  author: "Narendra",
   locale: "en-US",
 };
 
@@ -30,27 +30,19 @@ export const NAV_LINKS: NavigationLinks = {
     path: "/contact",
     label: "Contact",
   },
-  documentation: {
-    path: "https://docs.superwebthemes.com",
-    label: "Documentation",
-  },
 };
 
 export const SOCIAL_LINKS: SocialLinks = {
   email: {
     label: "Email",
-    url: "mailto:support@superwebthemes.com",
+    url: "mailto:skapashinarendra@gmail.com",
   },
   github: {
     label: "GitHub",
-    url: "https://github.com/superwebthemes",
-  },
-  discord: {
-    label: "Discord",
-    url: "https://discord.gg/V5MCBCsAjJ",
+    url: "https://github.com/imtherealnaska",
   },
   twitter: {
     label: "Twitter",
-    url: "https://twitter.com/superwebthemes",
+    url: "https://twitter.com/NarendraKapashi",
   },
 };
