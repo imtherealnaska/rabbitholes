@@ -1,5 +1,5 @@
 ---
-title: Using Rustmaker.
+title: Rustmaker.
 description: Rewrite of a go project into rust. And some takeaways.
-url: www.github.com/imtherealnaska/
+url: https://www.github.com/imtherealnaska/rustmaker
 ---
