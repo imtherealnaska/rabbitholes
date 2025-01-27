@@ -1,1 +1,1 @@
-Peronal blog.
+Personal blog.

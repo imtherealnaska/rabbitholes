@@ -1,6 +1,6 @@
 ---
-import "@/styles/reset.css";
 import "@/styles/global.css";
+import "@/styles/reset.css";
 
 import BaseHead from "@/components/BaseHead.astro";
 import Navigation from "@/components/Navigation.astro";
@@ -11,7 +11,7 @@ import Navigation from "@/components/Navigation.astro";
     <slot name="head" />
   </BaseHead>
   <body>
-    <main class="mx-auto min-h-screen max-w-screen-sm p-3 font-sans sm:p-6">
+    <main class="mx-auto min-h-screen max-w-screen-lg p-3 font-sans sm:p-6">
       <Navigation />
       <slot />
     </main>
