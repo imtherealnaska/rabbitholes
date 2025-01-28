@@ -8,13 +8,20 @@ publicationDate: 2024-10-25
 ## What is dictpress ?
   In short a dictionary maker .
 
-[clap-rs](https://crates.io/crates/clap).
+## How does it work?
+- It provides a single binary which has all the assets required, manly sql files and sample config files.
+- It has a (peculiar?????) tokenizer system.
+- A lot of DB operations.
+- And a whole bunch of REST APIs .
 
-- This crate is the standard to create CLI tools , like argparse in Python. And yeah packages in Rust are called __crates__ .
+
+### [clap-rs](https://crates.io/crates/clap).
+
+This is the crate to create CLI tools in Rust , like argparse in Python. And yeah packages in Rust are called **crates** .
 
 The CLI structure expected is like this :
 ```sh
-I  (try +) | ./target/debug/rustmaker                                                                                                                                                                                                                            6 changed try ↑
+[I](try +) | ./target/debug/rustmaker                                                                                                                                                                                                                            6 changed try ↑
 Usage: rustmaker <COMMAND>
 
 Commands:
