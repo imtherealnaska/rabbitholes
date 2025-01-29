@@ -75,7 +75,7 @@ fn main() {
 [#[arg(value_parser=clap::value_parser!(PathBuf) , num_args=1..6)]](https://docs.rs/clap/latest/clap/_derive/index.html#arg-attributes)
 This is a ....
 
-Oh my god I tried too hard to explain this without going into `behaviour inferred from the type` . This is [everywhere](https://docs.rs/clap/latest/clap/_derive/index.html#arg-attributes:~:text=behavior%20inferred%20from%20the%20field%20type) in the docs for clap.
+Oh my god I tried too hard to explain this without going into `behaviour inferred from the type` or types at all or even Parser and trait SubCommand . This is [everywhere](https://docs.rs/clap/latest/clap/_derive/index.html#arg-attributes:~:text=behavior%20inferred%20from%20the%20field%20type) in the docs for clap.
 
 
 Just adding the options required in the Go binary , we will get a structure like this .
