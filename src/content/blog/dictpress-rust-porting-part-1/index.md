@@ -2,7 +2,7 @@
 title: Porting dictpress to rust ( Part 1 - Getting CLI and DB setup ) .
 description: A intro to dictpress. Setting up CLI structure and getting DB setup.
 publicationDate: 2024-10-25
-image: ./dictpart1.jpg
+image: ./dictpart1.JPG
 ---
 
 
@@ -10,7 +10,7 @@ image: ./dictpart1.jpg
   In short a dictionary maker .
 
 ## How does it work?
-- It provides a single binary which has all the assets required, manly sql files and sample config files.
+- It provides a single binary which has all the assets required, mainly sql files and sample config files.
 - It has a (peculiar?????) tokenizer system.
 - A lot of DB operations.
 - And a whole bunch of REST APIs .
@@ -76,8 +76,10 @@ fn main() {
 [#[arg(value_parser=clap::value_parser!(PathBuf) , num_args=1..6)]](https://docs.rs/clap/latest/clap/_derive/index.html#arg-attributes)
 This is a ....
 
-Oh my god I tried too hard to explain this without going into `behaviour inferred from the type` or types at all or even Parser and trait SubCommand . This is [everywhere](https://docs.rs/clap/latest/clap/_derive/index.html#arg-attributes:~:text=behavior%20inferred%20from%20the%20field%20type) in the docs for clap.
+Oh my god I tried too hard to explain this without going into `behaviour inferred from the type` or types at all or even Parser and trait SubCommand . This is [everywhere](https://docs.rs/clap/latest/clap/_derive/index.html#arg-attributes:~:text=behavior%20inferred%20from%20the%20field%20type) in the docs .
 
+
+Soooooooooooooooooooooooooooooooooooooo what happens is.
 
 Just adding the options required in the Go binary , we will get a structure like this .
 So now the CLI has a similar structure.
