@@ -53,15 +53,8 @@ struct Args {
 
 #[derive(Subcommand)]
 enum Command {
-  /// three slashes ... will be the explanation for each subcommand
-  subcommands .....  // Each of these options
-}
-
-
-fn main() {
-  let cli = Args::parse();
-  match args.command {
-    /// current version of the build.
+    /// three slashes ... will be the explanation for each subcommand
+    // Each of these options
     Version,
     ///path to one or more config files (will be merged in order) (default [config.toml]) only 5 files for now.
     Config {
@@ -69,20 +62,23 @@ fn main() {
         #[arg(value_parser=clap::value_parser!(PathBuf) , num_args=1..6)]
         files: Vec<PathBuf>,
     },
+}
+
+
+fn main() {
+  let cli = Args::parse();
+  match args.command {
+    /// current version of the build.
   }
 }
 ```
 
-[#[arg(value_parser=clap::value_parser!(PathBuf) , num_args=1..6)]](https://docs.rs/clap/latest/clap/_derive/index.html#arg-attributes)
-This is a ....
+Playing around with these options here might be of help. [#[arg(value_parser=clap::value_parser!(PathBuf) , num_args=1..6)]](https://docs.rs/clap/latest/clap/_derive/index.html#arg-attributes)
+This is pretty self explanatory , default_value takes the default value of the subcommand, the triple slashes are the one line explanation.
 
-Oh my god I tried too hard to explain this without going into `behaviour inferred from the type` or types at all or even Parser and trait SubCommand . This is [everywhere](https://docs.rs/clap/latest/clap/_derive/index.html#arg-attributes:~:text=behavior%20inferred%20from%20the%20field%20type) in the docs .
+value_parser is just mentioning  the type of the argument. If you are expecting an arg of type PathBuf. Default is `string`
 
-
-Soooooooooooooooooooooooooooooooooooooo what happens is.
-
-Just adding the options required in the Go binary , we will get a structure like this .
-So now the CLI has a similar structure.
+Just adding the subcommands required in the Go binary....
 
 ```sh
 [I](try +) | ./target/debug/rustmaker
@@ -104,11 +100,14 @@ Options:
  -V, --version  Print version
 ```
 
+Ofcourse, on running these options nothing happens because there is no implementation for these, it's just a structure.
+Now onto  setting up the database. Just to have some difference I will be using _Sqlite_ instead of _Postgres_ as used in the original project. But most of the APIs will remain the same.
 
 ### [sqlx-rs](https://crates.io/crates/sqlx).
 
-- One major difference between **dictpress** and this porting project , **rustmaker** is that it uses sqlite instead of postgres .
-
+Like clap for CLI tools , sqlx is like the one to use for db connections. There are other options like diesel, seaOrm and others , which I am not familiar with.<br/>
+[diesel](https://diesel.rs/) : Used it for 2 mins and it started giving me linker errors.<br/>
+SQLx also gives some <span class="squiggly">compile-time squiggly lines</span> indicating issues with DB connections, which is nice.
 
 ## Rabbithole:
 
