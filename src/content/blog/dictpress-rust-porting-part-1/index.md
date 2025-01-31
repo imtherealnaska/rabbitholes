@@ -109,6 +109,61 @@ Like clap for CLI tools , sqlx is like the one to use for db connections. There 
 [diesel](https://diesel.rs/) : Used it for 2 mins and it started giving me linker errors.<br/>
 SQLx also gives some <span class="squiggly">compile-time squiggly lines</span> indicating issues with DB connections, which is nice.
 
+The idea here will be to get a DB Handle out of a Pool so we reuse connections and also can be passed through the app.
+
+```rust
+pub async fn get_connection_pool(dbconfig: &DBSettings) -> SqlitePool {
+    SqlitePool::connect(&dbconfig.dbname).await.unwrap()
+}
+
+pub async fn run(database_settings: &DBSettings) -> Result<Pool<sqlx::Sqlite>, sqlx::Error> {
+    if !Sqlite::database_exists(&database_settings.dbname)
+        .await
+        .unwrap_or(false)
+    {
+        println!("Creating database {}", database_settings.dbname);
+        match Sqlite::create_database(&database_settings.dbname).await {
+            Ok(_) => println!("Create db success"),
+            Err(error) => panic!("error : {}", error),
+        }
+    } else {
+        println!("Database already exists");
+    }
+
+    let db = get_connection_pool(database_settings).await;
+    Ok(db)
+}
+
+```
+
+Also we need to get the SQL files which have the required queries in them but they are in Postgres. After some help from Claude , quicky getting a SQLite query file we need to execute it on the
+db handle. After adding the files and making sure we get a DB, one of the subcommands that  needs to be implemented __install__ is implemented!!!
+
+To get the SQL files as assets we can make use of the [rust_embed](https://crates.io/crates/rust-embed) crate. Not to go too deep into this , using this crate is pretty straight forward.
+With respect to our use case of loading some files and unloading them, we need to know the dir prefix , as like how  to address them and where they are found in the current dir structure(relative to the main cargo.toml file).
+```rust
+#[derive(Embed)]
+#[folder = "deps/"]
+#[prefix = "deps/"]
+pub struct Asset;
+
+// getting files out is pretty easy
+let sample_config = Asset::get("deps/config.sample.toml").unwrap();
+let new_config = sample_config.data.as_ref();
+
+let new_config =
+     std::str::from_utf8(new_config).expect("issue with converting types from u8 to str");
+
+let replaced_file_contents = new_config.replace("dictpress_admin_password", &fake_password);
+
+fs::write("config.toml", replaced_file_contents)?;
+```
+
+While checking for other crates to achieve the same , I stumbled upon another cute looking crate [include_dir!](https://crates.io/crates/include_dir) which was a huge problem for me. I thought it would work like
+include_str!() in stdlib but using this as intended in the docs just gave me some craxyyyyy compile times ..... some of the times it would just hang , maybe it's gotten better now !!!.
+
+Just like that both **install** and **new-config** subcommands are done ✅
+
 ## Rabbithole:
 
 [Maybe this](https://github.com/launchbadge/sqlx/issues/3166)
