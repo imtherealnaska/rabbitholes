@@ -1,8 +1,8 @@
 ---
 title: Porting dictpress to rust ( Part 1 - Getting CLI and DB setup ) .
 description: A intro to dictpress. Setting up CLI structure and getting DB setup.
-publicationDate: 2024-10-25
-image: ./dictpart1.JPG
+publicationDate: 2025-01-25
+image: ../../dictpart1.JPG
 ---
 
 
@@ -39,7 +39,7 @@ dictpress (v2.0.0). Build dictionary websites. https://dict.press⏎
 The main CLI __structure is a struct__ ...... and subcommands are generally enums . [read docs they are nice](https://docs.rs/clap/latest/clap/_derive/index.html#arg-types).
 So, jumping directly into the implementation , what we need is a binary which can be used like
 ```sh
-  ourbin COMMAND # I dont like the -- before options .
+  rustmaker COMMAND # I dont like the -- before options .
 ```
 
 - `Args` struct will just have a `COMMAND` member.
