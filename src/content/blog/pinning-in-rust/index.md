@@ -2,5 +2,5 @@
 title: Understanding Pinning in rust.
 description: digging in Box::Pin and std::pin .
 publicationDate: 2025-02-08
-image: ../../dictpart1.JPG
+image: ../../whitesheep.jpg
 ---
