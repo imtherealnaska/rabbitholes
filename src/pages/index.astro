@@ -1,32 +1,59 @@
 ---
 import { getCollection } from "astro:content";
 
+import Post from "@/components/Post.astro";
+import SeoPage from "@/components/SeoPage.astro";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 
-import Introduction from "@/components/Introduction.astro";
-import Post from "@/components/Post.astro";
-import Project from "@/components/Project.astro";
-import SeoPage from "@/components/SeoPage.astro";
-
-const posts = (await getCollection("blog")).sort(
-  (a, b) => b.data.publicationDate.valueOf() - a.data.publicationDate.valueOf(),
-);
+const posts = (await getCollection("blog"))
+  .sort(
+    (a, b) =>
+      b.data.publicationDate.valueOf() - a.data.publicationDate.valueOf(),
+  )
+  .slice(0, 5);
 
 const projects = await getCollection("projects");
 ---
 
 <BaseLayout>
   <SeoPage slot="head" />
-  <main>
-    <Introduction />
-    <hr class="my-8 border-[0.5px] opacity-50" />
-    <h2 class="mb-3 text-lg font-bold">Blog posts</h2>
-    <ul class="grid list-none gap-2 p-0">
+  <div>
+    <div class="ornament">◆ welcome ◆</div>
+    <p style="margin: 0 0 18px;">
+      <span
+        style="float: left; font-size: 64px; line-height: 0.85; font-weight: 700; padding-right: 10px; padding-top: 6px;"
+        >R</span
+      >
+      abbitholes is a writing project about the long way around getting something
+      to compile. Mostly Rust. Sometimes systems work.
+    </p>
+    <p style="margin: 0 0 18px; clear: left; color: rgb(var(--muted));">
+      The notes are not always finished. That is on purpose.
+    </p>
+
+    <div class="ornament">◆ recent posts ◆</div>
+    <ul class="list-none p-0">
       {posts.map((post) => <Post post={post} />)}
     </ul>
-    <h2 class="mb-3 mt-8 text-lg font-bold">Projects</h2>
-    <ul class="grid list-none gap-2 p-0">
-      {projects.map((project) => <Project project={project} />)}
-    </ul>
-  </main>
+
+    <div class="ornament">◆ projects ◆</div>
+    {
+      projects.map((project, i) => (
+        <div style="padding: 18px 0; border-bottom: 1px dashed rgb(var(--rule));">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+            <span style="font-weight: 700; font-size: 16px;">
+              № {String(i + 1).padStart(2, "0")} · {project.data.title}
+            </span>
+          </div>
+          <div style="margin-bottom: 4px;">{project.data.description}</div>
+          <a
+            href={project.data.url}
+            style="color: rgb(var(--muted)); font-size: 12px; border-bottom: 1px solid rgb(var(--muted));"
+          >
+            {project.data.url.replace(/^https?:\/\//, "")}
+          </a>
+        </div>
+      ))
+    }
+  </div>
 </BaseLayout>

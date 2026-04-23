@@ -4,11 +4,23 @@ import { formatDate } from "@/lib/util";
 const { post } = Astro.props;
 ---
 
-<li class="flex flex-col no-underline lg:flex-row lg:justify-between">
-  <a href={`/blog/${post.slug}`}>
-    <span>{post.data.title}</span>
+<li>
+  <a
+    href={`/blog/${post.slug}`}
+    style="display: grid; grid-template-columns: 1fr auto; gap: 16px; padding: 12px 0; border-bottom: 1px dashed rgb(var(--rule)); color: inherit; align-items: baseline;"
+  >
+    <span>
+      <span style="border-bottom: 1px solid currentColor;">{post.data.title}</span>
+      {
+        post.data.description && (
+          <span style="color: rgb(var(--muted)); font-size: 12px; margin-left: 4px;">
+            — {post.data.description}
+          </span>
+        )
+      }
+    </span>
+    <span style="color: rgb(var(--muted)); font-size: 11px; letter-spacing: 1px; white-space: nowrap;">
+      {formatDate(post.data.publicationDate)}
+    </span>
   </a>
-  <div class="text-lightModeForegroundMuted dark:text-darkModeForegroundMuted">
-    {formatDate(post.data.publicationDate)}
-  </div>
 </li>

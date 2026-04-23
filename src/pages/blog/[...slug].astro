@@ -3,9 +3,7 @@ import { Image } from "astro:assets";
 import { type CollectionEntry, getCollection } from "astro:content";
 
 import BaseLayout from "@/layouts/BaseLayout.astro";
-
 import SeoPost from "@/components/SeoPost.astro";
-
 import { formatDate } from "@/lib/util";
 
 interface Props {
@@ -22,27 +20,145 @@ export async function getStaticPaths() {
 
 const { entry } = Astro.props;
 const { Content } = await entry.render();
+const tags = entry.data.tags ?? [];
 ---
 
 <BaseLayout>
   <SeoPost slot="head" entry={entry} />
-  <div>
+  <article>
+    <div style="text-align: center; color: rgb(var(--muted)); font-size: 10px; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 14px;">
+      — {formatDate(entry.data.publicationDate)} —
+    </div>
+    <h1 style="font-size: 34px; font-weight: 700; margin: 0 0 14px; letter-spacing: -0.5px; text-align: center; line-height: 1.15;">
+      {entry.data.title}
+    </h1>
+    <div style="text-align: center; color: rgb(var(--muted)); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 30px;">
+      {formatDate(entry.data.publicationDate)}{tags.length > 0 && ` · filed under ${tags.join(" · ")}`}
+    </div>
+
     {
       entry.data.image && (
-        <Image
-          src={entry.data.image}
-          alt={entry.data.imageAlt || ""}
-          class="h-auto w-full"
-        />
+        <figure style="margin: 0 0 36px;">
+          <Image
+            src={entry.data.image}
+            alt={entry.data.imageAlt || ""}
+            style="width: 100%; border: 1px solid rgb(var(--rule));"
+          />
+        </figure>
       )
     }
-    <h1 class="mt-3">{entry.data.title}</h1>
-    <p>
-      {formatDate(entry.data.publicationDate)}
-    </p>
-    <hr class="mb-6 mt-3 opacity-25" />
-    <div class="content prose-base mx-auto dark:prose-invert">
+
+    <div class="post-content">
       <Content />
     </div>
-  </div>
+
+    <div class="ornament">◆ end ◆</div>
+  </article>
 </BaseLayout>
+
+<style>
+  .post-content :global(p) {
+    margin: 0 0 18px;
+  }
+
+  .post-content :global(p:first-of-type::first-letter) {
+    float: left;
+    font-size: 64px;
+    line-height: 0.85;
+    font-weight: 700;
+    padding-right: 10px;
+    padding-top: 6px;
+  }
+
+  .post-content {
+    counter-reset: v3-section;
+  }
+
+  .post-content :global(h2) {
+    counter-increment: v3-section;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin: 36px 0 14px;
+    border-bottom: 1px solid rgb(var(--rule));
+    padding-bottom: 8px;
+  }
+
+  .post-content :global(h2::before) {
+    content: "§" counter(v3-section, decimal-leading-zero) " · ";
+    color: rgb(var(--muted));
+  }
+
+  .post-content :global(ul),
+  .post-content :global(ol) {
+    list-style: none;
+    padding-left: 0;
+    margin: 0 0 18px;
+    counter-reset: v3-list;
+  }
+
+  .post-content :global(ul li),
+  .post-content :global(ol li) {
+    counter-increment: v3-list;
+    margin-bottom: 8px;
+    padding-left: 22px;
+    position: relative;
+  }
+
+  .post-content :global(ul li::before),
+  .post-content :global(ol li::before) {
+    content: counter(v3-list, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    color: rgb(var(--muted));
+    font-variant-numeric: tabular-nums;
+  }
+
+  .post-content :global(code) {
+    background: rgb(var(--code-bg));
+    padding: 1px 5px;
+    border-radius: 2px;
+    font-size: 13px;
+    font-family: 'Geist Mono', 'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  .post-content :global(pre) {
+    background: rgb(var(--code-bg));
+    border: 1px solid rgb(var(--rule));
+    border-radius: 2px;
+    padding: 14px 16px;
+    overflow: auto;
+    margin: 0 0 18px;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .post-content :global(pre code) {
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    font-size: inherit;
+  }
+
+  .post-content :global(a) {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .post-content :global(blockquote) {
+    border-left: 2px solid rgb(var(--rule));
+    padding-left: 16px;
+    margin: 0 0 18px;
+    color: rgb(var(--muted));
+  }
+
+  .post-content :global(hr) {
+    border: none;
+    border-top: 1px solid rgb(var(--rule));
+    margin: 32px 0;
+  }
+
+  .post-content :global(strong) { font-weight: 700; }
+  .post-content :global(em) { font-style: italic; }
+</style>

@@ -1,5 +1,5 @@
 ---
-title: Memory Alignment — What Every Systems Programmer Should Know
+title: Memory Alignment
 description: From CPU bus transactions to Rust struct padding, a deep dive into alignment.
 publicationDate: 2026-04-14
 image: ../../whitesheep.jpg

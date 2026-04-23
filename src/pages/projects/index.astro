@@ -2,8 +2,6 @@
 import { getCollection } from "astro:content";
 
 import BaseLayout from "@/layouts/BaseLayout.astro";
-
-import Project from "@/components/Project.astro";
 import SeoPage from "@/components/SeoPage.astro";
 
 const projects = await getCollection("projects");
@@ -11,8 +9,31 @@ const projects = await getCollection("projects");
 
 <BaseLayout>
   <SeoPage slot="head" title="Projects" />
-  <h2 class="mb-3 text-lg font-bold">Projects</h2>
-  <ul class="grid list-none gap-2 p-0">
-    {projects.map((project) => <Project project={project} />)}
-  </ul>
+  <div>
+    <div style="text-align: center; color: rgb(var(--muted)); font-size: 10px; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 12px;">
+      Catalogue
+    </div>
+    <h1 style="font-size: 34px; font-weight: 700; text-align: center; margin: 0 0 30px; letter-spacing: -0.5px; line-height: 1.15;">
+      Projects
+    </h1>
+    <div class="ornament">◆ things i've built ◆</div>
+    {
+      projects.map((project, i) => (
+        <div style="padding: 18px 0; border-bottom: 1px dashed rgb(var(--rule));">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+            <span style="font-weight: 700; font-size: 16px;">
+              № {String(i + 1).padStart(2, "0")} · {project.data.title}
+            </span>
+          </div>
+          <div style="margin-bottom: 4px;">{project.data.description}</div>
+          <a
+            href={project.data.url}
+            style="color: rgb(var(--muted)); font-size: 12px; border-bottom: 1px solid rgb(var(--muted));"
+          >
+            {project.data.url.replace(/^https?:\/\//, "")}
+          </a>
+        </div>
+      ))
+    }
+  </div>
 </BaseLayout>

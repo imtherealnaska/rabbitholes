@@ -2,19 +2,44 @@
 import { getCollection } from "astro:content";
 
 import BaseLayout from "@/layouts/BaseLayout.astro";
-
 import Post from "@/components/Post.astro";
 import SeoPage from "@/components/SeoPage.astro";
 
 const posts = (await getCollection("blog")).sort(
   (a, b) => b.data.publicationDate.valueOf() - a.data.publicationDate.valueOf(),
 );
+
+const grouped = posts.reduce(
+  (acc, post) => {
+    const year = post.data.publicationDate.getFullYear().toString();
+    if (!acc[year]) acc[year] = [];
+    acc[year].push(post);
+    return acc;
+  },
+  {} as Record<string, typeof posts>,
+);
+const years = Object.keys(grouped).sort().reverse();
 ---
 
 <BaseLayout>
   <SeoPage slot="head" title="Blog" />
-  <h2 class="mb-3 text-lg font-bold">Blog posts</h2>
-  <ul class="grid list-none gap-2 p-0">
-    {posts.map((post) => <Post post={post} />)}
-  </ul>
+  <div>
+    <div style="text-align: center; color: rgb(var(--muted)); font-size: 10px; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 12px;">
+      The Index
+    </div>
+    <h1 style="font-size: 34px; font-weight: 700; text-align: center; margin: 0 0 30px; letter-spacing: -0.5px; line-height: 1.15;">Writing</h1>
+    <div class="ornament">◆ essays &amp; notes ◆</div>
+    {
+      years.map((year) => (
+        <div style="margin-bottom: 32px;">
+          <div style="font-size: 11px; letter-spacing: 3px; color: rgb(var(--muted)); text-transform: uppercase; margin-bottom: 12px;">
+            — {year} —
+          </div>
+          <ul class="list-none p-0">
+            {grouped[year].map((post) => <Post post={post} />)}
+          </ul>
+        </div>
+      ))
+    }
+  </div>
 </BaseLayout>

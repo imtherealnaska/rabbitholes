@@ -1,25 +1,41 @@
 ---
 import { SOCIAL_LINKS } from "@/siteConfig";
 
-import BaseLayout from "@/layouts/BaseLayout.astro";
-
 import SeoPage from "@/components/SeoPage.astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
 ---
 
 <BaseLayout>
   <SeoPage slot="head" title="Contact" />
-  <h2 class="mb-3 text-lg font-bold">Contact</h2>
-  <ul class="grid list-none gap-2 p-0">
-    {
-      Object.keys(SOCIAL_LINKS).map((socialLinkKey) => {
-        return (
-          <li>
-            <a href={SOCIAL_LINKS[socialLinkKey].url}>
-              {SOCIAL_LINKS[socialLinkKey].label}
-            </a>
-          </li>
-        );
-      })
-    }
-  </ul>
+  <div>
+    <h1
+      style="font-size: 34px; font-weight: 700; text-align: center; margin: 0 0 30px; letter-spacing: -0.5px; line-height: 1.15;"
+    >
+      Contact
+    </h1>
+    <div class="ornament">◆ how to reach ◆</div>
+    <table style="margin: 0 auto; border-collapse: collapse; font-size: 14px;">
+      <tbody>
+        {
+          Object.values(SOCIAL_LINKS).map((link) => (
+            <tr>
+              <td
+                style="padding: 8px 24px 8px 0; color: rgb(var(--muted)); text-transform: uppercase; letter-spacing: 2px; font-size: 11px; vertical-align: baseline;"
+              >
+                {link.label}
+              </td>
+              <td style="padding: 8px 0; border-bottom: 1px dashed rgb(var(--rule)); vertical-align: baseline;">
+                <a href={link.url}>{link.url.replace(/^mailto:/, "")}</a>
+              </td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+    <p
+      style="text-align: center; color: rgb(var(--muted)); margin-top: 28px; font-size: 12px;"
+    >
+      You can send jokes.
+    </p>
+  </div>
 </BaseLayout>

@@ -1,23 +1,26 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}"],
+  darkMode: "class",
   corePlugins: {
     preflight: false,
   },
   plugins: [require("@tailwindcss/typography")],
   theme: {
     extend: {
+      fontFamily: {
+        mono: ["'Geist Mono'", "'JetBrains Mono'", "ui-monospace", "monospace"],
+      },
       colors: {
-        lightModeBackground:
-          "rgb(var(--light-mode-background) / <alpha-value>)",
-        lightModeForeground:
-          "rgb(var(--light-mode-foreground) / <alpha-value>)",
-        lightModeForegroundMuted:
-          "rgb(var(--light-mode-foreground-muted) / <alpha-value>)",
-        darkModeBackground: "rgb(var(--dark-mode-background) / <alpha-value>)",
-        darkModeForeground: "rgb(var(--dark-mode-foreground) / <alpha-value>)",
-        darkModeForegroundMuted:
-          "rgb(var(--dark-mode-foreground-muted) / <alpha-value>)",
+        fg: "rgb(var(--fg) / <alpha-value>)",
+        muted: "rgb(var(--muted) / <alpha-value>)",
+        rule: "rgb(var(--rule) / <alpha-value>)",
+        sitebg: "rgb(var(--bg) / <alpha-value>)",
+        // legacy aliases kept for resume.astro
+        lightModeForeground: "rgb(var(--fg) / <alpha-value>)",
+        lightModeForegroundMuted: "rgb(var(--muted) / <alpha-value>)",
+        darkModeForeground: "rgb(var(--fg) / <alpha-value>)",
+        darkModeForegroundMuted: "rgb(var(--muted) / <alpha-value>)",
       },
     },
   },
