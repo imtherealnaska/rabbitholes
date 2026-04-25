@@ -3,12 +3,21 @@ import { NAV_LINKS } from "@/siteConfig.ts";
 const pathname = Astro.url.pathname;
 ---
 
-<header style="border-bottom: 1px solid rgb(var(--rule)); padding: 20px 32px; margin-bottom: 36px;">
-  <div style="max-width: 760px; margin: 0 auto; display: flex; justify-content: space-between; align-items: baseline;">
-    <a href="/" style="font-weight: 700; letter-spacing: 2px; text-transform: uppercase; font-size: 12px;">
-      Rabbit·holes
+<header
+  style="border-bottom: 1px solid rgb(var(--rule)); padding: 20px 32px; margin-bottom: 36px;"
+>
+  <div
+    style="max-width: 760px; margin: 0 auto; display: flex; justify-content: space-between; align-items: baseline;"
+  >
+    <a
+      href="/"
+      style="font-weight: 700; letter-spacing: 2px; text-transform: uppercase; font-size: 12px;"
+    >
+      Rabbitholes
     </a>
-    <nav style="display: flex; align-items: baseline; gap: 18px; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;">
+    <nav
+      style="display: flex; align-items: baseline; gap: 18px; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;"
+    >
       {
         Object.entries(NAV_LINKS).map(([, link]) => {
           const isActive =
@@ -29,7 +38,8 @@ const pathname = Astro.url.pathname;
         id="theme-toggle"
         title="Toggle theme"
         style="background: none; border: none; cursor: pointer; color: inherit; font-family: inherit; font-size: 20px; padding: 0; line-height: 1; vertical-align: middle;"
-      >◑</button>
+        >◑</button
+      >
     </nav>
   </div>
 </header>
