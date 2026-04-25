@@ -1,8 +1,8 @@
 ---
 import { getCollection } from "astro:content";
 
-import BaseLayout from "@/layouts/BaseLayout.astro";
 import SeoPage from "@/components/SeoPage.astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
 
 const projects = await getCollection("projects");
 ---
@@ -10,10 +10,14 @@ const projects = await getCollection("projects");
 <BaseLayout>
   <SeoPage slot="head" title="Projects" />
   <div>
-    <div style="text-align: center; color: rgb(var(--muted)); font-size: 10px; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 12px;">
+    <div
+      style="text-align: center; color: rgb(var(--muted)); font-size: 10px; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 12px;"
+    >
       Catalogue
     </div>
-    <h1 style="font-size: 34px; font-weight: 700; text-align: center; margin: 0 0 30px; letter-spacing: -0.5px; line-height: 1.15;">
+    <h1
+      style="font-size: 34px; font-weight: 700; text-align: center; margin: 0 0 30px; letter-spacing: -0.5px; line-height: 1.15;"
+    >
       Projects
     </h1>
     <div class="ornament">◆ things i've built ◆</div>
@@ -22,7 +26,7 @@ const projects = await getCollection("projects");
         <div style="padding: 18px 0; border-bottom: 1px dashed rgb(var(--rule));">
           <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
             <span style="font-weight: 700; font-size: 16px;">
-              № {String(i + 1).padStart(2, "0")} · {project.data.title}
+              {String(i + 1).padStart(2, "0")} · {project.data.title}
             </span>
           </div>
           <div style="margin-bottom: 4px;">{project.data.description}</div>
