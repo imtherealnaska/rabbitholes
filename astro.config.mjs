@@ -1,3 +1,4 @@
+import mdx from "@astrojs/mdx";
 import sitemap from "@astrojs/sitemap";
 import tailwind from "@astrojs/tailwind";
 import { defineConfig } from "astro/config";
@@ -6,5 +7,5 @@ import { defineConfig } from "astro/config";
 export default defineConfig({
   // change this to your own domain
   site: "https://rabbitholes.in/",
-  integrations: [tailwind(), sitemap()],
+  integrations: [mdx(), tailwind(), sitemap()],
 });

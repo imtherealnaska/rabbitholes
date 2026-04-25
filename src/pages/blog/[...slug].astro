@@ -4,6 +4,9 @@ import { type CollectionEntry, getCollection } from "astro:content";
 
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import SeoPost from "@/components/SeoPost.astro";
+import Tip from "@/components/Tip.astro";
+import Warn from "@/components/Warn.astro";
+import Rabbithole from "@/components/Rabbithole.astro";
 import { formatDate } from "@/lib/util";
 
 interface Props {
@@ -12,7 +15,7 @@ interface Props {
 
 export async function getStaticPaths() {
   const blog = await getCollection("blog");
-  return blog.map((entry) => ({
+  return blog.map((entry: CollectionEntry<"blog">) => ({
     params: { slug: entry.slug },
     props: { entry },
   }));
@@ -49,7 +52,7 @@ const tags = entry.data.tags ?? [];
     }
 
     <div class="post-content">
-      <Content />
+      <Content components={{ Tip, Warn, Rabbithole }} />
     </div>
 
     <div class="ornament">◆ end ◆</div>

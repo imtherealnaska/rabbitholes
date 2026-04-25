@@ -1,0 +1,54 @@
+---
+interface Props {
+  title: string;
+}
+const { title } = Astro.props;
+---
+
+<aside class="warn">
+  <div class="warn-label">
+    <span class="warn-icon">※</span>
+    <span>—— {title} ——</span>
+  </div>
+  <div class="warn-body">
+    <slot />
+  </div>
+</aside>
+
+<style>
+  .warn {
+    margin: 26px 0;
+    padding: 16px 18px 14px;
+    border: 1px dashed rgb(160 90 20);
+    background: rgba(160, 90, 20, 0.05);
+  }
+
+  :global(.dark) .warn {
+    border-color: rgb(217 168 106);
+    background: rgba(255, 180, 80, 0.06);
+  }
+
+  .warn-label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: rgb(160 90 20);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  :global(.dark) .warn-label {
+    color: rgb(217 168 106);
+  }
+
+  .warn-icon {
+    font-size: 11px;
+  }
+
+  .warn-body {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+</style>

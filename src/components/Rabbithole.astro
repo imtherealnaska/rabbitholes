@@ -1,0 +1,87 @@
+---
+interface Props {
+  href: string;
+  title: string;
+  blurb: string;
+}
+const { href, title, blurb } = Astro.props;
+---
+
+<a href={href} class="rabbithole">
+  <div class="rabbithole-inner">
+    <div class="rabbithole-text">
+      <div class="rabbithole-eyebrow">⌬ Get into this rabbithole</div>
+      <div class="rabbithole-title">{title}</div>
+      <div class="rabbithole-blurb">{blurb}</div>
+    </div>
+    <div class="rabbithole-arrow">↘</div>
+  </div>
+</a>
+
+<style>
+  .rabbithole {
+    display: block;
+    margin: 32px 0;
+    padding: 18px 22px;
+    border: 1px solid rgb(var(--fg));
+    color: rgb(var(--fg));
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .rabbithole:hover {
+    background: rgb(var(--fg));
+    color: rgb(var(--bg));
+  }
+
+  .rabbithole-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .rabbithole-text {
+    min-width: 0;
+  }
+
+  .rabbithole-eyebrow {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: rgb(var(--muted));
+    margin-bottom: 6px;
+  }
+
+  .rabbithole:hover .rabbithole-eyebrow {
+    color: inherit;
+  }
+
+  .rabbithole-title {
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    letter-spacing: -0.2px;
+  }
+
+  .rabbithole-blurb {
+    font-size: 12px;
+    color: rgb(var(--muted));
+    line-height: 1.5;
+  }
+
+  .rabbithole:hover .rabbithole-blurb {
+    color: inherit;
+  }
+
+  .rabbithole-arrow {
+    flex-shrink: 0;
+    font-size: 28px;
+    font-weight: 400;
+    transition: transform 0.15s;
+  }
+
+  .rabbithole:hover .rabbithole-arrow {
+    transform: translateX(4px);
+  }
+</style>
