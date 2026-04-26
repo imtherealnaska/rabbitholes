@@ -1,0 +1,254 @@
+---
+title: Memory Alignment - Repr is a contract
+description: struct padding, a deep dive into alignment.
+publicationDate: 2026-04-14
+image: ../../whitesheep.jpg
+tags: ["rust", "memory"]
+---
+
+import MemAlignSim from "../../../components/MemAlignSim.astro";
+
+### Checking Unaligment scenarios.
+
+I wanted to see what actually happens at runtime when alignment rules are violated.
+
+The code below initializes a buffer (an array of bytes). It then attempts to read 4 bytes (a `uint32_t`) starting from **index 1**.
+
+```c
+#include <stdint.h>
+#include <string.h>
+#include <stdio.h>
+
+int main() {
+    uint8_t buf[16] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+
+    // Method 1: direct cast
+    uint32_t *p = (uint32_t *)(buf + 1);
+    uint32_t val1 = *p;
+
+    // Method 2: safe path via memcpy, copy can start at any point.
+    // So this code will work for anything.
+    uint32_t val2;
+    memcpy(&val2, buf + 1, sizeof(val2));
+
+    printf("direct: 0x%08X\n", val1);
+    printf("memcpy: 0x%08X\n", val2);
+    return 0;
+}
+```
+
+<MemAlignSim />
+
+I was expecting something to crash because of the direct casting. And then this blog would have been , "Hey just use Rust".
+
+<Warn>But , that didnt happen. It worked. Worked fine .</Warn>
+
+```sh
+c-fun [main●●] gcc ./phase-1-02.c
+c-fun [main●●] ./a.out
+direct : 0x05040302
+memcpy : 0x05040302
+```
+
+<Tip>The reverse is because it is little endian</Tip>
+
+### UBSan Flag
+
+That's just basic compilation with no flags or anything. Now , lets try UBSan , a runtime checker for undefined behavior.
+
+```sh
+c-fun [main●●] gcc -fsanitize=undefined -g -o ubsan_test phase-1-02.c
+./ubsan_test
+phase-1-02.c:11:19: runtime error: load of misaligned address 0x00016b2fa951 for type 'uint32_t' (aka 'unsigned int'), which requires 4 byte alignment
+0x00016b2fa951: note: pointer points here
+ 00 00 00  01 02 03 04 05 06 07 08  00 00 00 00 00 00 00 00  c8 12 9f f0 01 00 00 00  ff 00 ab f7 f6
+              ^
+SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior phase-1-02.c:11:19
+direct : 0x05040302
+memcpy : 0x05040302
+```
+
+Lets look into the objdump :
+
+```sh
+dump.txt
+phase-1-02.o:   file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+0000000000000000 <ltmp0>:
+       0: d100c3ff      sub     sp, sp, #0x30
+       4: a9014ff4      stp     x20, x19, [sp, #0x10]
+       8: a9027bfd      stp     x29, x30, [sp, #0x20]
+       c: 910083fd      add     x29, sp, #0x20
+      10: 52806053      mov     w19, #0x302             ; =770
+      14: 72a0a093      movk    w19, #0x504, lsl #16
+      18: f90003f3      str     x19, [sp]
+      1c: 90000000      adrp    x0, 0x0 <ltmp0>
+      20: 91000000      add     x0, x0, #0x0
+      24: 94000000      bl      0x24 <ltmp0+0x24>
+      28: f90003f3      str     x19, [sp]
+      2c: 90000000      adrp    x0, 0x0 <ltmp0>
+      30: 91000000      add     x0, x0, #0x0
+      34: 94000000      bl      0x34 <ltmp0+0x34>
+      38: 52800000      mov     w0, #0x0                ; =0
+      3c: a9427bfd      ldp     x29, x30, [sp, #0x20]
+      40: a9414ff4      ldp     x20, x19, [sp, #0x10]
+      44: 9100c3ff      add     sp, sp, #0x30
+      48: d65f03c0      ret
+```
+
+What is actually being done here is a bit different from the C- code itself
+
+```sh
+; ... standard function setup (stack pointers, etc.) ...
+
+10: 52806053 mov w19, #0x302 ; Load lower 16 bits of 0x05040302
+14: 72a0a093 movk w19, #0x504, lsl #16 ; Move 0x504 into the top 16 bits
+; w19 now holds the constant 0x05040302!
+
+18: f90003f3 str x19, [sp] ; Store this constant to the stack for printf
+1c: 90000000 adrp x0, 0x0 ; Get pointer to the "direct: 0x%08X\n" string
+20: 91000000 add x0, x0, #0x0
+24: 94000000 bl 0x24 ; Call printf (Method 1)
+
+28: f90003f3 str x19, [sp] ; Reuse the SAME constant (w19) for Method 2
+2c: 90000000 adrp x0, 0x0 ; Get pointer to the "memcpy: 0x%08X\n" string
+30: 91000000 add x0, x0, #0x0
+34: 94000000 bl 0x34 ; Call printf (Method 2)
+```
+
+So what happened ?
+I looked around and found out that compiler does something called
+
+<Rabbithole href="example.com" title="Constant Folding" />
+
+It saw `buf` and realized that the value at `buf + 1` will _always_ be
+`0x05040302`. Instead of generating code to "try" and read memory, it just
+hard-coded the answer into the register `w19`.
+
+This was MacM1 arm. Tried getting an objdump from x86
+
+```sh
+dump-1.txt (volatile):
+
+phase-1-02.o:   file format mach-o 64-bit x86-64
+
+Disassembly of section __TEXT,__text:
+
+0000000000000000 <_main>:
+       0: 55                            pushq   %rbp
+       1: 48 89 e5                      movq    %rsp, %rbp
+       4: 53                            pushq   %rbx
+       5: 48 83 ec 38                   subq    $0x38, %rsp
+       9: 48 8b 05 00 00 00 00          movq    (%rip), %rax            ## 0x10 <_main+0x10>
+      10: 48 8b 00                      movq    (%rax), %rax
+      13: 48 89 45 f0                   movq    %rax, -0x10(%rbp)
+      17: 0f b6 05 72 00 00 00          movzbl  0x72(%rip), %eax        ## 0x90 <_main+0x90>
+      1e: 88 45 d0                      movb    %al, -0x30(%rbp)
+[HERE]21: 8b 1d 01 00 00 00             movl    0x1(%rip), %ebx         ## 0x28 <_main+0x28>
+      27: 89 5d cc                      movl    %ebx, -0x34(%rbp)
+      2a: 0f b6 05 0f 00 00 00          movzbl  0xf(%rip), %eax         ## 0x40 <_main+0x40>
+      31: 88 45 ea                      movb    %al, -0x16(%rbp)
+      34: 0f b7 05 0d 00 00 00          movzwl  0xd(%rip), %eax         ## 0x48 <_main+0x48>
+      3b: 66 89 45 e8                   movw    %ax, -0x18(%rbp)
+      3f: 48 8b 05 05 00 00 00          movq    0x5(%rip), %rax         ## 0x4b <_main+0x4b>
+      46: 48 89 45 e0                   movq    %rax, -0x20(%rbp)
+      4a: 48 8d 3d 4f 00 00 00          leaq    0x4f(%rip), %rdi        ## 0xa0 <_main+0xa0>
+      51: 89 de                         movl    %ebx, %esi
+      53: 31 c0                         xorl    %eax, %eax
+      55: e8 00 00 00 00                callq   0x5a <_main+0x5a>
+      5a: 48 8d 3d 50 00 00 00          leaq    0x50(%rip), %rdi        ## 0xb1 <_main+0xb1>
+      61: 89 de                         movl    %ebx, %esi
+      63: 31 c0                         xorl    %eax, %eax
+      65: e8 00 00 00 00                callq   0x6a <_main+0x6a>
+      6a: 48 8b 05 00 00 00 00          movq    (%rip), %rax            ## 0x71 <_main+0x71>
+      71: 48 8b 00                      movq    (%rax), %rax
+      74: 48 3b 45 f0                   cmpq    -0x10(%rbp), %rax
+      78: 75 09                         jne     0x83 <_main+0x83>
+      7a: 31 c0                         xorl    %eax, %eax
+      7c: 48 83 c4 38                   addq    $0x38, %rsp
+      80: 5b                            popq    %rbx
+      81: 5d                            popq    %rbp
+      82: c3                            retq
+      83: e8 00 00 00 00                callq   0x88 <_main+0x88>
+```
+
+Unlike the ARM compiler (which just created a hardcoded number), the x86 compiler **did perform a memory load** (`movl`).
+
+But **Where is the second memory load for `memcpy`?** .
+The compiler looked at Method 1 (the unaligned cast) and emitted a single `movl` (load 32-bit integer) instruction.
+It then looked at Method 2 (`memcpy`), realized it was trying to fetch the exact same 4 bytes,
+and decided to just **reuse the result** it already stored in the `%ebx` register.
+You can see `%ebx` being moved into `%esi` for the first `printf` at line 51, and then reused for the second `printf` at line 61.
+The compiler merged the "dangerous" UB method and the "safe" `memcpy` method into a single load.
+
+### Finally : What am I trying to do again ?
+
+Yeah yeah yeah. perf hit of not having aligned structs.
+
+<Rabbithole
+  href="/blog/benchmark-1"
+  title="Code for verification"
+  blurb="The C benchmark used to measure aligned vs unaligned reads on M1."
+></Rabbithole>
+
+TLDR ,
+
+```sh
+c-fun [main●●] ./bench
+c-fun [main●●] strace
+zsh: command not found: strace
+c-fun [main●●] ./bench
+c-fun [main●●] time ./bench
+./bench  0.04s user 0.10s system 66% cpu 0.207 total
+c-fun [main●●] ./bench
+c-fun [main●●] echo $?
+0
+c-fun [main●●] e bench_1.c
+c-fun [main●●] gcc -O2 -fno-tree-vectorize -o bench bench_1.c
+c-fun [main●●] ./bench
+Aligned (0)    :  0.2519 sec |   3.97 GB/s
+Unaligned (1)  :  0.0555 sec |  18.03 GB/s
+Unaligned (4)  :  0.0553 sec |  18.10 GB/s
+c-fun [main●●]  WHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAT?????
+
+after reordering :
+c-fun [main●●] ./bench
+Unaligned (1)  :  0.2750 sec |   3.64 GB/s
+Aligned (0)    :  0.0605 sec |  16.54 GB/s
+Unaligned (4)  :  0.0561 sec |  17.84 GB/s
+c-fun [main●●]
+
+
+lets put it atlast
+
+c-fun [main●●] ./bench
+Unaligned (1)  :  0.2630 sec |   3.80 GB/s
+Unaligned (4)  :  0.0586 sec |  17.07 GB/s
+Aligned (0)    :  0.0555 sec |  18.02 GB/s
+```
+
+**`Unaligned (1) : 3.64 GB/s` (The Victim):** Because this was executed _first_, it took the massive performance hit of **Page Faults**.
+
+**`Aligned (0) : 16.54 GB/s` (The True Baseline):** By the time this loop started, the memory was fully wired into physical RAM and the CPU's cache was hot.
+
+**The ultimate conclusion:** On the M1, once the cache is warm and the CPU is at full clock speed, there is virtually **zero performance penalty** for unaligned scalar integer loads.
+The hardware handles the byte-shifting so efficiently that memory bandwidth (~18 GB/s) becomes the bottleneck, not the CPU execution units.
+
+<Warn>
+  I found out that On the M1, `CNTVCT_EL0` does **not** count CPU cycles. It is
+  a fixed-frequency hardware timer that ticks exactly **24,000,000 times per
+  second (24 MHz)**, regardless of how fast the CPU is currently boosting. So,
+  while `get_ticks()` is the lowest-latency, most accurate way to measure _time_
+  on an M1 (better than `clock_gettime`), it still doesn't give you the raw CPU
+  execution cycles.
+</Warn>
+
+Uhhh. So cant use perf. something something **_Instruments_**: ---
+
+<Rabbithole
+  href="/blog/instruments"
+  title="Instruments"
+  blurb="Profiling and debugging with Apple's Instruments tool."
+></Rabbithole>

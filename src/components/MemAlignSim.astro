@@ -1,0 +1,346 @@
+---
+
+---
+
+<div class="sim-wrap">
+  <div class="sim-controls">
+    <button id="mas-btn-m1">Method 1: Dereference (*p)</button>
+    <button id="mas-btn-m2">Method 2: memcpy()</button>
+    <button id="mas-btn-reset" class="reset-btn">Reset</button>
+  </div>
+
+  <div class="sim-section">
+    <div class="ram-row" id="mas-source-ram">
+      <div class="boundary" style="left:0px"></div>
+      <div class="boundary" style="left:240px"></div>
+      <div class="boundary" style="left:480px"></div>
+
+      <div id="mas-reader">32-bit</div>
+
+      <div class="byte"><div class="byte-label">0x1000</div>00</div>
+      <div class="byte payload" id="mas-src-1">
+        <div class="byte-label">0x1001</div>AA
+      </div>
+      <div class="byte payload" id="mas-src-2">
+        <div class="byte-label">0x1002</div>BB
+      </div>
+      <div class="byte payload" id="mas-src-3">
+        <div class="byte-label">0x1003</div>CC
+      </div>
+      <div class="byte payload" id="mas-src-4">
+        <div class="byte-label">0x1004</div>DD
+      </div>
+      <div class="byte"><div class="byte-label">0x1005</div>00</div>
+      <div class="byte"><div class="byte-label">0x1006</div>00</div>
+      <div class="byte"><div class="byte-label">0x1007</div>00</div>
+    </div>
+  </div>
+
+  <div
+    class="sim-section"
+    id="mas-target-section"
+    style="opacity:0;transition:opacity 0.5s"
+  >
+    <div class="sim-label">Target Variable (val2 — Aligned)</div>
+    <div class="ram-row">
+      <div class="boundary" style="left:0px"></div>
+      <div class="boundary" style="left:240px"></div>
+      <div class="byte" id="mas-dst-1">
+        <div class="byte-label">0x2000</div>??
+      </div>
+      <div class="byte" id="mas-dst-2">
+        <div class="byte-label">0x2001</div>??
+      </div>
+      <div class="byte" id="mas-dst-3">
+        <div class="byte-label">0x2002</div>??
+      </div>
+      <div class="byte" id="mas-dst-4">
+        <div class="byte-label">0x2003</div>??
+      </div>
+    </div>
+  </div>
+
+  <div class="sim-status" id="mas-status">Ready. Select a method.</div>
+</div>
+
+<style>
+  .sim-wrap {
+    margin: 32px 0;
+    padding: 24px;
+    border: 1px solid rgb(var(--rule));
+    background: rgba(0, 0, 0, 0.015);
+    overflow-x: auto;
+  }
+
+  :global(.dark) .sim-wrap {
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .sim-controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+  }
+
+  button {
+    padding: 6px 14px;
+    font-size: 11px;
+    font-family: inherit;
+    letter-spacing: 1px;
+    cursor: pointer;
+    border: 1px solid rgb(var(--rule));
+    background: rgb(var(--code-bg));
+    color: rgb(var(--fg));
+    transition:
+      background 0.15s,
+      border-color 0.15s;
+  }
+
+  button:hover:not(:disabled) {
+    border-color: rgb(var(--fg));
+  }
+
+  button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .reset-btn {
+    color: rgb(var(--muted));
+  }
+
+  .sim-section {
+    margin-bottom: 36px;
+  }
+
+  .sim-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgb(var(--muted));
+    margin-bottom: 28px;
+  }
+
+  .ram-row {
+    display: flex;
+    position: relative;
+  }
+
+  .byte {
+    width: 56px;
+    height: 56px;
+    border: 1px solid rgb(var(--rule));
+    background: rgb(var(--code-bg));
+    color: rgb(var(--fg));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-sizing: border-box;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: bold;
+    transition:
+      background 0.2s,
+      border-color 0.2s;
+    flex-shrink: 0;
+  }
+
+  .byte-label {
+    position: absolute;
+    top: -22px;
+    font-size: 10px;
+    color: rgb(var(--muted));
+    white-space: nowrap;
+  }
+
+  .payload {
+    background: rgba(59, 130, 246, 0.12);
+    border-color: rgba(59, 130, 246, 0.35);
+  }
+
+  :global(.dark) .payload {
+    background: rgba(59, 130, 246, 0.18);
+    border-color: rgba(59, 130, 246, 0.4);
+  }
+
+  .boundary {
+    position: absolute;
+    width: 2px;
+    height: 72px;
+    background: rgba(220, 38, 38, 0.55);
+    top: -8px;
+    z-index: 10;
+  }
+
+  :global(.dark) .boundary {
+    background: rgba(248, 113, 113, 0.55);
+  }
+
+  #mas-reader {
+    position: absolute;
+    width: 224px;
+    height: 64px;
+    border: 2px solid rgba(59, 130, 246, 0.7);
+    box-sizing: border-box;
+    top: -4px;
+    left: 0;
+    opacity: 0;
+    transition:
+      left 0.5s ease,
+      opacity 0.3s,
+      border-color 0.3s,
+      background 0.3s;
+    pointer-events: none;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(59, 130, 246, 0.9);
+    background: rgba(59, 130, 246, 0.06);
+  }
+
+  #mas-reader.fault {
+    border-color: rgba(220, 38, 38, 0.85);
+    background: rgba(220, 38, 38, 0.1);
+    color: rgba(220, 38, 38, 0.9);
+    animation: shake 0.3s ease-in-out;
+  }
+
+  :global(.dark) #mas-reader.fault {
+    border-color: rgba(248, 113, 113, 0.85);
+    background: rgba(248, 113, 113, 0.12);
+    color: rgba(248, 113, 113, 0.9);
+  }
+
+  @keyframes shake {
+    0% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(-5px);
+    }
+    50% {
+      transform: translateX(5px);
+    }
+    75% {
+      transform: translateX(-5px);
+    }
+    100% {
+      transform: translateX(0);
+    }
+  }
+
+  .sim-status {
+    font-size: 12px;
+    letter-spacing: 1px;
+    color: rgb(var(--muted));
+    min-height: 20px;
+    transition: color 0.3s;
+  }
+
+  .sim-status.error {
+    color: rgb(185 28 28);
+  }
+  .sim-status.ok {
+    color: rgb(21 128 61);
+  }
+
+  :global(.dark) .sim-status.error {
+    color: rgb(248 113 113);
+  }
+  :global(.dark) .sim-status.ok {
+    color: rgb(74 222 128);
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    const reader = document.getElementById("mas-reader");
+    const status = document.getElementById("mas-status");
+    const target = document.getElementById("mas-target-section");
+    const btnM1 = document.getElementById("mas-btn-m1");
+    const btnM2 = document.getElementById("mas-btn-m2");
+    const btnRst = document.getElementById("mas-btn-reset");
+
+    function disableButtons(v) {
+      btnM1.disabled = v;
+      btnM2.disabled = v;
+    }
+
+    function resetSim() {
+      reader.style.opacity = "0";
+      reader.className = "";
+      reader.style.left = "0px";
+      reader.textContent = "32-bit Hardware Load";
+      target.style.opacity = "0";
+      status.className = "sim-status";
+      status.textContent = "Ready. Select a method.";
+      disableButtons(false);
+      for (let i = 1; i <= 4; i++) {
+        const el = document.getElementById("mas-dst-" + i);
+        el.textContent = "??";
+        el.style.background = "";
+        el.style.borderColor = "";
+      }
+    }
+
+    function runMethod1() {
+      resetSim();
+      disableButtons(true);
+      status.textContent = "CPU issues strict 32-bit load instruction...";
+      reader.style.opacity = "1";
+      reader.style.left = "0px";
+      setTimeout(function () {
+        reader.style.left = "56px";
+        status.textContent = "Attempting to read 4 bytes at 0x1001...";
+        setTimeout(function () {
+          reader.classList.add("fault");
+          reader.textContent = "FAULT!";
+          status.className = "sim-status error";
+          status.textContent =
+            "Hardware Fault (SIGBUS)! Crosses 4-byte boundary at 0x1004.";
+        }, 500);
+      }, 800);
+    }
+
+    function runMethod2() {
+      resetSim();
+      disableButtons(true);
+      target.style.opacity = "1";
+      status.textContent =
+        "Compiler emits byte-by-byte copy (or safe unaligned load)...";
+      const payload = ["AA", "BB", "CC", "DD"];
+      let i = 0;
+      const iv = setInterval(function () {
+        if (i >= 4) {
+          clearInterval(iv);
+          status.className = "sim-status ok";
+          status.textContent =
+            "Success! 4 bytes copied safely without hardware faults.";
+          return;
+        }
+        const src = document.getElementById("mas-src-" + (i + 1));
+        const dst = document.getElementById("mas-dst-" + (i + 1));
+        src.style.background = "rgba(59,130,246,0.45)";
+        setTimeout(function () {
+          src.style.background = "";
+        }, 200);
+        dst.textContent = payload[i];
+        dst.style.background = "rgba(59,130,246,0.12)";
+        dst.style.borderColor = "rgba(59,130,246,0.35)";
+        status.textContent = "Copying byte " + (i + 1) + " of 4...";
+        i++;
+      }, 600);
+    }
+
+    btnM1.addEventListener("click", runMethod1);
+    btnM2.addEventListener("click", runMethod2);
+    btnRst.addEventListener("click", resetSim);
+  })();
+</script>
