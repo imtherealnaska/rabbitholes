@@ -1,0 +1,145 @@
+---
+title: Memory Alignment - Intro
+description: struct padding, a deep dive into alignment.
+publicationDate: 2026-04-14
+image: ../../whitesheep.jpg
+tags: ["rust", "memory"]
+---
+
+Soooooo, I started this topic with a question,
+
+<Tip>
+  "What would be the performance hit if we have structs that are not properly
+  aligned?"
+</Tip>
+
+## The Prediction
+
+Before running the code to check the sizeof() and offset(), I tried predicting as to what the size of the struct might be.
+So a char is 1 byte , int is 4 and so on.
+
+```c
+    struct A {
+        char   a;   // 1 byte
+        int    b;   // 4 bytes
+        char   c;   // 1 byte
+        double d;   // 8 bytes
+        short  e;   // 2 bytes
+    };
+
+1 + 4 + 1 + 8 + 2 = 16
+|
+|        struct B {
+|            double d;   // 8 bytes
+|            int    b;   // 4 bytes
+|            short  e;   // 2 bytes
+|            char   a;   // 1 byte
+|            char   c;   // 1 byte
+|        };
+|
+|----> same here , commutative property of addition
+```
+
+Then I ran this:
+
+```c
+#include <stdio.h>
+#include <stddef.h>
+
+int main() {
+    printf("sizeof(A): %zu\n", sizeof(struct A));
+    printf("sizeof(B): %zu\n", sizeof(struct B));
+
+    printf("offsetof A.a: %zu\n", offsetof(struct A, a));
+    printf("offsetof A.b: %zu\n", offsetof(struct A, b));
+    printf("offsetof A.c: %zu\n", offsetof(struct A, c));
+    printf("offsetof A.d: %zu\n", offsetof(struct A, d));
+    printf("offsetof A.e: %zu\n", offsetof(struct A, e));
+
+    // same for B
+}
+```
+
+Output:
+
+```
+sizeof(A)     : 32
+offsetof A.a  : 0
+offsetof A.b  : 4
+offsetof A.c  : 8
+offsetof A.d  : 16
+offsetof A.e  : 24
+
+sizeof(B)     : 16
+offsetof B.d  : 0
+offsetof B.b  : 8
+offsetof B.e  : 12
+offsetof B.a  : 14
+offsetof B.c  : 15
+```
+
+Struct A: **32 bytes**. Struct B: **16 bytes**. Same fields. Half the size.
+
+## What Is Actually Happening
+
+The rule the compiler follows is : **a struct member of a particular type will start from a memory address that is multiple of size of that type**
+
+- `char` (1 byte) → any offset
+- `int` (4 bytes) → offset divisible by 4
+- `double` (8 bytes) → offset divisible by 8
+
+When the compiler lays out Struct A, it places `char a` at offset 0, then needs to place `int b`. The next byte is offset 1 — not divisible by 4. So it inserts **3 bytes of padding** to reach offset 4. Then `char c` goes at offset 8, but `double d` needs to be at a multiple of 8, so **7 more bytes of padding** to reach offset 16. By the end, 10 of the 32 bytes are invisible filler the compiler inserted without telling you.
+
+```C
+    struct A {
+        char   a;   // 1 byte
+        =========== padding [3]
+        int    b;   // 4 bytes
+        char   c;   // 1 byte
+        =========== padding [7]
+        double d;   // 8 bytes
+        short  e;   // 2 bytes
+    };
+```
+
+```
+Struct A memory layout:
+[a][ ][ ][ ][b b b b][c][ ][ ][ ][ ][ ][ ][d d d d d d d d][e e][ ][ ][ ][ ][ ][ ]
+ 0  1  2  3  4       8                    16               24
+```
+
+Struct B, with fields ordered largest to smallest, wastes almost nothing:
+
+```
+Struct B memory layout:
+[d d d d d d d d][b b b b][e e][a][c][ ][ ]
+ 0               8        12  14 15
+```
+
+The compiler still adds 2 bytes at the end — the struct's total size must be a multiple of its largest member's alignment (8 for `double`). But that's it.
+
+## The idea
+
+So , ordering structs would be a good idea. But , in which order ? Any order seems to be fine , increasing or descreasing.
+
+In Rust, you can verify this directly:
+
+```rust
+use std::mem;
+
+struct Struct1  { a: u8, b: u64, c: u32, d: u16 }
+struct Struct2 { b: u64, c: u32, d: u16, a: u8 }
+
+fn main() {
+    println!("Bad:  {} bytes", mem::size_of::<Struct1>());   // 24
+    println!("Good: {} bytes", mem::size_of::<Struct2>());  // 16
+}
+```
+
+which follows the C ABI rules exactly.
+There is a subtlety in Rust: `repr(Rust)` (the default) gives the compiler the freedom to reorder fields for optimal packing the layout is no guaranteed. If you
+need a stable layout , you must use #[repr(C)]`.
+
+## Why It Matters Beyond Memory
+
+The size difference compounds. An array of 1 million `struct A` values wastes 10MB of padding . A 64-byte cache line holds 2 `struct A` values but 4 `struct B` values. Every cache miss that would have loaded 2 structs now loads 4. The layout decision you made at the type level propagates all the way down to how many L1 cache misses your inner loop takes.
