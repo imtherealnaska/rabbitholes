@@ -1,0 +1,160 @@
+---
+title: Assembly
+description: What the CPU executes
+publicationDate: 2026-04-14
+image: ../../whitesheep.jpg
+tags: ["rust", "memory"]
+---
+
+This blog is more of a "what did compiler do in this case?"
+Idea here is to trace what happens to functions/types when the assembly gets generated. Will the instructions be one to one mapping of the code ? Short answer is no , but if you want
+to find something interesting about `println!`macro read on .
+
+### Code (rust and C):
+
+```rust
+pub fn read_aligned(p: &u64) -> u64 { *p }
+
+pub fn read_unaligned(buf: &[u8]) -> u64 {
+    unsafe { (buf.as_ptr() as *const u64).read_unaligned() }
+}
+
+#[repr(packed)]
+pub struct P { a: u8, b: u64 }
+pub fn read_packed(p: &P) -> u64 { p.b }
+
+pub fn read_via_copy(buf: &[u8; 9]) -> u64 {
+    let mut v = 0u64;
+    unsafe {
+        std::ptr::copy_nonoverlapping(
+            buf.as_ptr().add(1),
+            &mut v as *mut u64 as *mut u8, 8
+        );
+    }
+    v
+}
+
+
+fn main() {
+    // this calls all the above functions
+}
+```
+
+### What is the assembly?
+
+For :
+
+**read_aligned**
+
+```asm
+__ZN8asm_rust12read_aligned17hae23ba6e18e284e6E:
+	.cfi_startproc
+	ldr	x0, [x0]
+	ret
+	.cfi_endproc
+
+```
+
+One instruction. Load 8 bytes from the address in x0, return it. The compiler trusts the alignment guarantee from &u64 and emits the simplest possible load.
+
+**read_packed**
+
+```asm
+   __ZN8asm_rust11read_packed17h270d81dfd93f5ed4E:
+	.cfi_startproc
+	ldur	x0, [x0, #1]
+	ret
+	.cfi_endproc
+```
+
+One instruction, but notice it's ldur not ldr. The difference: ldr requires the offset to be a multiple of the register size (8 bytes). ldur accepts arbitrary byte offsets.
+The #1 is the field offset because a: u8 sits at byte 0, so b: u64 is at byte 1.
+The compiler knows the packed struct forces misalignment and quietly emits ldur. Still one instruction on ARM64.
+
+**read_unaligned**
+
+```asm
+__ZN8asm_rust14read_unaligned17h1ac27e3a675e9611E:
+.cfi_startproc
+stp	x29, x30, [sp, #-16]!
+.cfi_def_cfa_offset 16
+mov	x29, sp
+.cfi_def_cfa w29, 16
+.cfi_offset w30, -8
+.cfi_offset w29, -16
+adrp	x1, l_anon.f13a6191a597150d9726e7b2de80f1fe.12@PAGE
+add	x1, x1, l_anon.f13a6191a597150d9726e7b2de80f1fe.12@PAGEOFF
+bl	__ZN4core3ptr9const_ptr33_$LT$impl$u20$$BP$const$u20$T$GT$14read_unaligned17h8a4179588724e169E
+.cfi_def_cfa wsp, 16
+ldp	x29, x30, [sp], #16
+.cfi_def_cfa_offset 0
+.cfi_restore w30
+.cfi_restore w29
+ret
+.cfi_endproc
+```
+
+It calls into Rust's core::ptr::read_unaligned implementation rather than emitting a direct load. More overhead than read_packed , stack frame setup (stp/ldp).
+In this case the compiler cannot make the same assumptions as in read_aligned or read_packed. Because there it was guaranteed by the type system (via packed) or by &u64 contract.
+But here, when a raw pointer is all it gets to see, it cannot make the same assumption. So it gets more conserative
+
+**read_via_copy**
+
+```asm
+__ZN8asm_rust13read_via_copy17h48235f73b45c9dc4E:
+	.cfi_startproc
+	sub	sp, sp, #32
+	.cfi_def_cfa_offset 32
+	stp	x29, x30, [sp, #16]
+	add	x29, sp, #16
+	.cfi_def_cfa w29, 16
+	.cfi_offset w30, -8
+	.cfi_offset w29, -16
+	str	x0, [sp]
+	add	x1, sp, #8
+	str	xzr, [sp, #8]
+	add	x0, x0, #1
+	mov	w8, #1
+	mov	x3, x8
+	mov	x2, x3
+	mov	w8, #8
+	mov	x4, x8
+	adrp	x5, l_anon.f13a6191a597150d9726e7b2de80f1fe.2@PAGE
+	add	x5, x5, l_anon.f13a6191a597150d9726e7b2de80f1fe.2@PAGEOFF
+	bl	__ZN4core3ptr19copy_nonoverlapping18precondition_check17h56e4ab3d7b41d67fE
+	ldr	x0, [sp]
+	ldur	x8, [x0, #1]
+	str	x8, [sp, #8]
+	ldr	x0, [sp, #8]
+	.cfi_def_cfa wsp, 32
+	ldp	x29, x30, [sp, #16]
+	add	sp, sp, #32
+	.cfi_def_cfa_offset 0
+	.cfi_restore w30
+	.cfi_restore w29
+	ret
+	.cfi_endproc
+```
+
+This is the _biggest_ of the four. Stack frame allocation (sub sp, sp, #32), a precondition check call, then the actual copy.
+Compiler optimized the copy_nonoverlapping + read-from-stack pattern into... ldur x8, [x0, #1].
+It realized "copy 8 bytes then load" is identical to an unaligned load and collapsed it.
+So at the hardware level it ends up doing the same thing as read_packed, but with far more surrounding overhead because the compiler had to prove that first.
+
+**Found println!() instructions**
+
+```asm
+	adrp	x4, l_anon.f13a6191a597150d9726e7b2de80f1fe.16@PAGE
+	add	x4, x4, l_anon.f13a6191a597150d9726e7b2de80f1fe.16@PAGEOFF
+	str	x4, [sp, #96]
+	bl	__ZN4core3fmt2rt38_$LT$impl$u20$core..fmt..Arguments$GT$16new_v1_formatted17h8b7626bf49aca515E
+	ldr	x0, [sp, #8]
+	bl	__ZN3std2io5stdio6_print17h31727a912c7756f3E
+```
+
+This wires together the format string ("Aligned: " + "\n") with the actual value to print into a fmt::Arguments struct on the stack
+Boils down to eventually something like [this](https://doc.rust-lang.org/std/macro.println.html)
+
+```rust
+std::io::stdout().lock().write_fmt(format_args!(...)).unwrap();
+```
