@@ -41,11 +41,11 @@ const tags = entry.data.tags ?? [];
 
     {
       entry.data.image && (
-        <figure style="margin: 0 0 36px;">
+        <figure style="margin: 0 0 36px; display: flex; justify-content: center;">
           <Image
             src={entry.data.image}
             alt={entry.data.imageAlt || ""}
-            style="width: 100%; border: 1px solid rgb(var(--rule));"
+            style="width: 45%; border: 1px solid rgb(var(--rule));"
           />
         </figure>
       )

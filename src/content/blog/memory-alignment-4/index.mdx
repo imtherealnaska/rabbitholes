@@ -1,0 +1,182 @@
+---
+title: False Sharing
+description: struct padding, a deep dive into alignment.
+publicationDate: 2026-05-06
+image: ../../whitesheep.jpg
+tags: ["rust", "memory"]
+---
+
+This is the result that surprised me most across all four phases of this experiment. Not because the performance difference was large .
+I expected some difference but because the fix was so simple and the cause operated at a level of the hardware I had never directly observed before.
+
+## The Setup
+
+Two threads. Each increments its own counter 500 million times. The counters are different fields — the threads never touch the same data. There should be no contention.
+
+```rust
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::thread;
+use std::time::Instant;
+
+const ITERS: u64 = 500_000_000;
+
+// Version A: both counters sit adjacent in memory
+struct CountersA {
+    a: AtomicU64,  // 8 bytes
+    b: AtomicU64,  // 8 bytes — immediately follows a
+}
+
+// Version B: each counter padded to its own cache line
+#[repr(align(64))]
+struct PaddedCounter {
+    value: AtomicU64,
+}
+
+struct CountersB {
+    a: PaddedCounter,  // 64 bytes (padded)
+    b: PaddedCounter,  // 64 bytes (padded), starts on next cache line
+}
+fn main() {
+    let counters_a = CounterA {
+        a: AtomicU64::new(0),
+        b: AtomicU64::new(0),
+    };
+
+    let start_a = Instant::now();
+    thread::scope(|s| {
+        s.spawn(|| {
+            for _ in 0..ITERS {
+                counters_a.a.fetch_add(1, Ordering::Relaxed);
+            }
+        });
+        s.spawn(|| {
+            for _ in 0..ITERS {
+                counters_a.b.fetch_add(1, Ordering::Relaxed);
+            }
+        });
+    });
+    let time_a = start_a.elapsed();
+    println!("Version A (False Sharing):  {:.2?}", time_a);
+
+    // same for counterB
+}
+```
+
+The benchmark spawns two threads per version, one writing `a`, one writing `b`, and measures wall time.
+
+## The Results
+
+```
+Version A (False Sharing):  4.62s
+Version B (Padded):         1.14s
+```
+
+**4x slower.** The threads are writing to _different_ fields. They share no logical state. And yet Version A is four times slower than Version B.
+
+## What Is Actually Happening: The MESI Protocol
+
+Modern CPUs do not operate on individual bytes or even individual cache lines in isolation. Every core has its own L1 and L2 cache, and the cores coordinate through a cache coherence protocol called **MESI** — each cache line is always in one of four states:
+
+```
+Modified  (M) — this core has the only valid copy, and it's been written to
+Exclusive (E) — this core has the only copy, and it's clean
+Shared    (S) — multiple cores have a clean copy
+Invalid   (I) — this core's copy is stale, must fetch from elsewhere
+```
+
+In Version A, `counters.a` and `counters.b` both fit inside a single 64-byte cache line. Here is what happens on every iteration:
+
+```
+Thread 1 writes a:
+  → L1 cache line containing {a, b} transitions to Modified (M)
+  → Thread 2's copy of the same line transitions to Invalid (I)
+
+Thread 2 writes b:
+  → Must re-fetch the cache line (it's Invalid)
+  → Line bounces from Thread 1's L1 to Thread 2's L1
+  → Thread 1's copy transitions to Invalid (I)
+
+Thread 1 writes a again:
+  → Must re-fetch again...
+```
+
+Every single write forces a cache line bounce between cores. 500 million iterations × 2 threads = 1 billion cache line invalidations across the interconnect. The threads are not contending on the data — they are contending on the _cache line_ that happens to contain both fields.
+
+This is **false sharing**: the hardware sees one unit of memory (64 bytes) being written by two cores and enforces coherence on the whole unit, even though each core is only touching a different 8 bytes within it.
+
+## The Fix: Physical Separation
+
+`#[repr(align(64))]` forces each `PaddedCounter` to start on a 64-byte boundary and pads its size to a multiple of 64 bytes. Now `a` and `b` live on _different_ cache lines:
+
+```
+Before (Version A):
+  Cache line 0: [a: 8 bytes][b: 8 bytes][padding: 48 bytes]
+  ← both threads fight over this line
+
+After (Version B):
+  Cache line 0: [a: 8 bytes][padding: 56 bytes]
+  Cache line 1: [b: 8 bytes][padding: 56 bytes]
+  ← each thread owns its line entirely
+```
+
+Thread 1 writes to cache line 0. Thread 2 writes to cache line 1. The coherence protocol never sees a conflict. The interconnect is silent.
+
+## What Instruments Showed
+
+I profiled the aligned benchmark (Version B, after the fix) with Apple Instruments CPU Profiler. The pipeline breakdown for the hot loop:
+
+<Rabbithole
+  href="/blog/instruments"
+  title="Instruments"
+  blurb="A deep dive into using Apple Instruments for CPU profiling."
+/>
+
+```
+Useful (instruction retirement):           42.32%
+Instruction Processing Bottleneck:         54.08%
+Instruction Delivery Bottleneck:            1.84%
+Discarded (branch misprediction):           1.74%
+```
+
+The 54% instruction processing bottleneck is the memory system telling you it is the bottleneck — not the CPU. The M1's ALU was ready to execute the atomic increment, but it was waiting on the memory controller to confirm the cache line state. The hardware prefetcher was staging lines ahead of time (which is why we got ~18 GB/s throughput on the aligned scalar benchmark), but the atomic write-ownership protocol still adds latency that cannot be prefetched away.
+
+**582 million clock cycles** for 375 million loop iterations across three benchmark runs. That works out to approximately **1.5 cycles per iteration** — the atomic increment plus cache line ownership handshake costs less than two clock ticks on M1 once false sharing is eliminated.
+
+## That's cool , why not increase it to 128??
+
+I also tried `#[repr(align(128))]` to test whether the M1's L2 cache (which uses 128-byte lines) was still causing contention:
+
+```
+Version B (64-byte padding):   1.14s
+Version B (128-byte padding):  1.10s
+```
+
+Within margin of error. The L2 contention overhead was negligible compared to the L1 false sharing penalty. Eliminating L1 false sharing (64-byte alignment) solved ~95% of the degradation.
+The L2 effect essentially disappears because once L1 false sharing is gone, the L2 rarely sees cross-core write conflicts on the same line.
+
+## The General Rule
+
+<Tip>
+False sharing occurs when:
+   Two threads write to different addresses
+   Those addresses fall within the same 64-byte cache line
+   The writes are frequent enough to saturate the coherence protocol
+
+The fix:
+Pad shared-but-independent data to separate cache lines.
+In Rust: #[repr(align(64))]
+In C: **attribute**((aligned(64)))
+
+</Tip>
+
+This matters most for:
+
+- Per-thread counters and statistics
+- Producer/consumer ring buffer slots
+- Lock implementations (the lock word and the protected data)
+- Any struct where different fields are owned by different threads
+
+## What I Walked Away With
+
+The four-phase experiment I ran covered a lot of ground : struct padding, unaligned reads, LLVM optimization passes, assembly encoding, cache coherence.
+But the false sharing result is the one I was surprised with.
